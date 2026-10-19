@@ -1,6 +1,6 @@
 //! The fixed-capacity vector, in safe code over [`Buffer`].
 
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer, Drainer};
 use crate::{CapacityError, fail};
 use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering;
@@ -188,7 +188,7 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
             }
         }
         Drain {
-            items,
+            items: items.into_drainer(),
             _vec: PhantomData,
         }
     }
@@ -386,24 +386,30 @@ impl<'a, T, const CAP: usize> IntoIterator for &'a mut ArrayVec<T, CAP> {
 impl<T, const CAP: usize> IntoIterator for ArrayVec<T, CAP> {
     type Item = T;
     type IntoIter = IntoIter<T, CAP>;
-    fn into_iter(mut self) -> IntoIter<T, CAP> {
-        // Reversed, so popping yields the first element first.
-        self.as_mut_slice().reverse();
-        IntoIter { items: self }
+    fn into_iter(self) -> IntoIter<T, CAP> {
+        IntoIter {
+            items: self.buffer.into_drainer(),
+        }
     }
 }
 
 /// The owning iterator of an [`ArrayVec`].
 pub struct IntoIter<T, const CAP: usize> {
-    /// The remaining elements, last first.
-    items: ArrayVec<T, CAP>,
+    items: Drainer<T, CAP>,
+}
+
+impl<T, const CAP: usize> IntoIter<T, CAP> {
+    /// The elements not yet yielded.
+    pub fn as_slice(&self) -> &[T] {
+        self.items.as_slice()
+    }
 }
 
 impl<T, const CAP: usize> Iterator for IntoIter<T, CAP> {
     type Item = T;
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.items.pop()
+        self.items.front()
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.items.len(), Some(self.items.len()))
@@ -411,8 +417,9 @@ impl<T, const CAP: usize> Iterator for IntoIter<T, CAP> {
 }
 
 impl<T, const CAP: usize> DoubleEndedIterator for IntoIter<T, CAP> {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
-        self.items.pop_at(0)
+        self.items.back()
     }
 }
 
@@ -420,14 +427,14 @@ impl<T, const CAP: usize> ExactSizeIterator for IntoIter<T, CAP> {}
 
 impl<T: fmt::Debug, const CAP: usize> fmt::Debug for IntoIter<T, CAP> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.items.iter().rev()).finish()
+        f.debug_list().entries(self.as_slice()).finish()
     }
 }
 
 /// The elements of a range removed by [`ArrayVec::drain`].
 pub struct Drain<'a, T, const CAP: usize> {
-    /// The drained elements, last first.
-    items: Buffer<T, CAP>,
+    /// The drained elements, last first (so `next` takes from the back).
+    items: Drainer<T, CAP>,
     _vec: PhantomData<&'a mut ArrayVec<T, CAP>>,
 }
 
@@ -435,7 +442,7 @@ impl<T, const CAP: usize> Iterator for Drain<'_, T, CAP> {
     type Item = T;
     #[inline]
     fn next(&mut self) -> Option<T> {
-        self.items.pop()
+        self.items.back()
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.items.len(), Some(self.items.len()))
@@ -443,12 +450,9 @@ impl<T, const CAP: usize> Iterator for Drain<'_, T, CAP> {
 }
 
 impl<T, const CAP: usize> DoubleEndedIterator for Drain<'_, T, CAP> {
+    #[inline]
     fn next_back(&mut self) -> Option<T> {
-        if self.items.len() == 0 {
-            return None;
-        }
-        self.items.as_mut_slice().rotate_left(1);
-        self.items.pop()
+        self.items.front()
     }
 }
 

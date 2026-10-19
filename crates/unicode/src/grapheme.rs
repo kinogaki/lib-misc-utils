@@ -156,6 +156,13 @@ fn cluster_len(text: &str) -> usize {
     if bytes[0] >= 0x20 && bytes[0] < 0x7f && bytes.get(1).is_none_or(|&b| b < 0x80) {
         return 1;
     }
+    cluster_len_by_rules(text)
+}
+
+/// [`cluster_len`] past the ASCII fast path: the UAX #29 rules (out of line,
+/// so callers inline only the fast path).
+#[inline(never)]
+fn cluster_len_by_rules(text: &str) -> usize {
     let mut chars = text.char_indices();
     let (_, first) = chars.next().expect("non-empty");
     let mut state = State::new(props(first));

@@ -18,6 +18,8 @@ fn out_of_bounds(what: &'static str, index: usize, len: usize) -> ! {
 /// What a small vector needs of its inline storage (our `ArrayVec`).
 #[doc(hidden)]
 pub trait Inline<T> {
+    type IntoIter: DoubleEndedIterator<Item = T> + ExactSizeIterator;
+    fn into_iter(self) -> Self::IntoIter;
     fn len(&self) -> usize;
     fn capacity(&self) -> usize;
     fn try_push(&mut self, value: T) -> Result<(), T>;
@@ -28,6 +30,11 @@ pub trait Inline<T> {
 }
 
 impl<T, const N: usize> Inline<T> for arrayvec::ArrayVec<T, N> {
+    type IntoIter = arrayvec::IntoIter<T, N>;
+    #[inline]
+    fn into_iter(self) -> arrayvec::IntoIter<T, N> {
+        IntoIterator::into_iter(self)
+    }
     #[inline]
     fn len(&self) -> usize {
         arrayvec::ArrayVec::len(self)
@@ -590,54 +597,50 @@ impl<'a, A: Array> IntoIterator for &'a mut SmallVec<A> {
 impl<A: Array> IntoIterator for SmallVec<A> {
     type Item = A::Item;
     type IntoIter = IntoIter<A>;
-    fn into_iter(mut self) -> IntoIter<A> {
-        match &mut self.data {
-            Data::Heap(vec) => IntoIter {
-                heap: Some(core::mem::take(vec).into_iter()),
-                inline: self,
+    fn into_iter(self) -> IntoIter<A> {
+        IntoIter {
+            data: match self.data {
+                Data::Inline(inline) => Elements::Inline(inline.into_iter()),
+                Data::Heap(vec) => Elements::Heap(vec.into_iter()),
             },
-            Data::Inline(inline) => {
-                // Reversed, so popping yields the first element first.
-                inline.as_mut_slice().reverse();
-                IntoIter {
-                    heap: None,
-                    inline: self,
-                }
-            }
         }
     }
 }
 
+enum Elements<A: Array> {
+    Inline(<A::Inline as Inline<A::Item>>::IntoIter),
+    Heap(std::vec::IntoIter<A::Item>),
+}
+
 /// The owning iterator of a [`SmallVec`].
 pub struct IntoIter<A: Array> {
-    heap: Option<std::vec::IntoIter<A::Item>>,
-    /// Inline elements, last first (empty when `heap` is used).
-    inline: SmallVec<A>,
+    data: Elements<A>,
 }
 
 impl<A: Array> Iterator for IntoIter<A> {
     type Item = A::Item;
     #[inline]
     fn next(&mut self) -> Option<A::Item> {
-        match &mut self.heap {
-            Some(heap) => heap.next(),
-            None => self.inline.pop(),
+        match &mut self.data {
+            Elements::Inline(inline) => inline.next(),
+            Elements::Heap(heap) => heap.next(),
         }
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let n = match &self.heap {
-            Some(heap) => heap.len(),
-            None => self.inline.len(),
+        let n = match &self.data {
+            Elements::Inline(inline) => inline.len(),
+            Elements::Heap(heap) => heap.len(),
         };
         (n, Some(n))
     }
 }
 
 impl<A: Array> DoubleEndedIterator for IntoIter<A> {
+    #[inline]
     fn next_back(&mut self) -> Option<A::Item> {
-        match &mut self.heap {
-            Some(heap) => heap.next_back(),
-            None => (!self.inline.is_empty()).then(|| self.inline.remove(0)),
+        match &mut self.data {
+            Elements::Inline(inline) => inline.next_back(),
+            Elements::Heap(heap) => heap.next_back(),
         }
     }
 }

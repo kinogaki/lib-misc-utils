@@ -1,6 +1,10 @@
 //! Bit-level conversions between binary16 and binary32/binary64.
+//!
+//! Out of line: naga calls them from many places in its constant folding,
+//! where code size matters more than the call.
 
 /// binary32 to binary16, round to nearest, ties to even.
+#[inline(never)]
 pub const fn f32_to_f16(value: f32) -> u16 {
     let x = value.to_bits();
     let sign = ((x >> 16) & 0x8000) as u16;
@@ -33,6 +37,7 @@ pub const fn f32_to_f16(value: f32) -> u16 {
 }
 
 /// binary64 to binary16, round to nearest, ties to even (one rounding).
+#[inline(never)]
 pub const fn f64_to_f16(value: f64) -> u16 {
     let x = value.to_bits();
     let sign = ((x >> 48) & 0x8000) as u16;
@@ -72,6 +77,7 @@ const fn round_shift(value: u64, shift: u32) -> u64 {
 }
 
 /// binary16 to binary32 (exact).
+#[inline(never)]
 pub const fn f16_to_f32(bits: u16) -> f32 {
     let sign = ((bits & 0x8000) as u32) << 16;
     let exponent = ((bits >> 10) & 0x1f) as u32;
@@ -98,6 +104,7 @@ pub const fn f16_to_f32(bits: u16) -> f32 {
 }
 
 /// binary16 to binary64 (exact).
+#[inline(never)]
 pub const fn f16_to_f64(bits: u16) -> f64 {
     let sign = ((bits & 0x8000) as u64) << 48;
     let exponent = ((bits >> 10) & 0x1f) as u64;
