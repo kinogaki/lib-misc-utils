@@ -1,7 +1,7 @@
 //! The fixed-capacity vector, in safe code over [`Buffer`].
 
-use crate::CapacityError;
 use crate::buffer::Buffer;
+use crate::{CapacityError, fail};
 use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering;
 use core::fmt;
@@ -60,7 +60,7 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
     #[track_caller]
     pub fn push(&mut self, element: T) {
         if self.buffer.push(element).is_err() {
-            panic!("ArrayVec::push: capacity {CAP} exceeded");
+            fail::capacity_exceeded("ArrayVec::push");
         }
     }
 
@@ -74,9 +74,8 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
     /// `index > len` or when full.
     #[track_caller]
     pub fn insert(&mut self, index: usize, element: T) {
-        if let Err(error) = self.try_insert(index, element) {
-            drop(error);
-            panic!("ArrayVec::insert: capacity {CAP} exceeded");
+        if self.try_insert(index, element).is_err() {
+            fail::capacity_exceeded("ArrayVec::insert");
         }
     }
 
@@ -84,10 +83,9 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
     #[track_caller]
     pub fn try_insert(&mut self, index: usize, element: T) -> Result<(), CapacityError<T>> {
         let len = self.len();
-        assert!(
-            index <= len,
-            "ArrayVec::insert: index {index} out of bounds (len {len})"
-        );
+        if index > len {
+            fail::out_of_bounds("ArrayVec::insert", index, len);
+        }
         self.try_push(element)?;
         self.as_mut_slice()[index..].rotate_right(1);
         Ok(())
@@ -103,8 +101,10 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
     #[track_caller]
     pub fn remove(&mut self, index: usize) -> T {
         let len = self.len();
-        self.pop_at(index)
-            .unwrap_or_else(|| panic!("ArrayVec::remove: index {index} out of bounds (len {len})"))
+        match self.pop_at(index) {
+            Some(element) => element,
+            None => fail::out_of_bounds("ArrayVec::remove", index, len),
+        }
     }
 
     /// [`ArrayVec::remove`], `None` when out of bounds.
@@ -121,9 +121,10 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
     #[track_caller]
     pub fn swap_remove(&mut self, index: usize) -> T {
         let len = self.len();
-        self.swap_pop(index).unwrap_or_else(|| {
-            panic!("ArrayVec::swap_remove: index {index} out of bounds (len {len})")
-        })
+        match self.swap_pop(index) {
+            Some(element) => element,
+            None => fail::out_of_bounds("ArrayVec::swap_remove", index, len),
+        }
     }
 
     /// [`ArrayVec::swap_remove`], `None` when out of bounds.
@@ -173,10 +174,9 @@ impl<T, const CAP: usize> ArrayVec<T, CAP> {
             Bound::Excluded(&e) => e,
             Bound::Unbounded => len,
         };
-        assert!(
-            start <= end && end <= len,
-            "ArrayVec::drain: range {start}..{end} out of bounds (len {len})"
-        );
+        if start > end || end > len {
+            fail::out_of_bounds("ArrayVec::drain", end, len);
+        }
         // Move the range behind the tail, then take it off the end: the
         // buffer then holds it last-first, which `Drain` pops front-first.
         self.as_mut_slice()[start..].rotate_left(end - start);

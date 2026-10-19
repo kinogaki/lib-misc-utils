@@ -39,7 +39,7 @@ fn push_pop_and_capacity() {
 }
 
 #[test]
-#[should_panic(expected = "capacity 2 exceeded")]
+#[should_panic(expected = "ArrayVec::push: capacity exceeded")]
 fn push_past_capacity_panics() {
     let mut v = ArrayVec::<u8, 2>::new();
     v.extend([1, 2, 3]);

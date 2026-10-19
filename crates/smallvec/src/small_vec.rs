@@ -6,6 +6,15 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::{Bound, Deref, DerefMut, RangeBounds};
 
+/// An index or range past the length; out of line and shared by every
+/// element type, so generic code does not format a message per instantiation.
+#[cold]
+#[inline(never)]
+#[track_caller]
+fn out_of_bounds(what: &'static str, index: usize, len: usize) -> ! {
+    panic!("{what}: index {index} out of bounds (len {len})")
+}
+
 /// What a small vector needs of its inline storage (our `ArrayVec`).
 #[doc(hidden)]
 pub trait Inline<T> {
@@ -196,10 +205,9 @@ impl<A: Array> SmallVec<A> {
     #[track_caller]
     pub fn insert(&mut self, index: usize, value: A::Item) {
         let len = self.len();
-        assert!(
-            index <= len,
-            "SmallVec::insert: index {index} out of bounds (len {len})"
-        );
+        if !(index <= len) {
+            out_of_bounds("SmallVec::insert", index, len);
+        }
         self.push(value);
         self.as_mut_slice()[index..].rotate_right(1);
     }
@@ -211,10 +219,9 @@ impl<A: Array> SmallVec<A> {
         A::Item: Clone,
     {
         let len = self.len();
-        assert!(
-            index <= len,
-            "SmallVec::insert_from_slice: index {index} out of bounds (len {len})"
-        );
+        if !(index <= len) {
+            out_of_bounds("SmallVec::insert_from_slice", index, len);
+        }
         self.extend_from_slice(slice);
         self.as_mut_slice()[index..].rotate_right(slice.len());
     }
@@ -223,10 +230,9 @@ impl<A: Array> SmallVec<A> {
     #[track_caller]
     pub fn remove(&mut self, index: usize) -> A::Item {
         let len = self.len();
-        assert!(
-            index < len,
-            "SmallVec::remove: index {index} out of bounds (len {len})"
-        );
+        if !(index < len) {
+            out_of_bounds("SmallVec::remove", index, len);
+        }
         self.as_mut_slice()[index..].rotate_left(1);
         self.pop().expect("in bounds")
     }
@@ -235,10 +241,9 @@ impl<A: Array> SmallVec<A> {
     #[track_caller]
     pub fn swap_remove(&mut self, index: usize) -> A::Item {
         let len = self.len();
-        assert!(
-            index < len,
-            "SmallVec::swap_remove: index {index} out of bounds (len {len})"
-        );
+        if !(index < len) {
+            out_of_bounds("SmallVec::swap_remove", index, len);
+        }
         self.as_mut_slice().swap(index, len - 1);
         self.pop().expect("in bounds")
     }
@@ -394,10 +399,9 @@ impl<A: Array> SmallVec<A> {
             Bound::Excluded(&e) => e,
             Bound::Unbounded => len,
         };
-        assert!(
-            start <= end && end <= len,
-            "SmallVec::drain: range {start}..{end} out of bounds (len {len})"
-        );
+        if start > end || end > len {
+            out_of_bounds("SmallVec::drain", end, len);
+        }
         self.as_mut_slice()[start..].rotate_left(end - start);
         let mut taken = SmallVec::<A>::with_capacity(end - start);
         for _ in start..end {

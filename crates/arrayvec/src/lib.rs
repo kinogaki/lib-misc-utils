@@ -13,6 +13,7 @@
 mod array_string;
 mod array_vec;
 mod buffer;
+mod fail;
 
 pub use array_string::ArrayString;
 pub use array_vec::{ArrayVec, Drain, IntoIter};
