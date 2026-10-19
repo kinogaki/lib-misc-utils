@@ -1,0 +1,23 @@
+[package]
+name = "smallvec"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# wgpu, wgpu-core, wgpu-hal and harfrust resolve to it through
+# [patch.crates-io] (see README.md).
+version = "1.16.3+kinogaki"
+description = "Kinogaki's own small vector (inline until it spills to the heap) with smallvec's API"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# Feature names the frozen consumers ask for; they change nothing here.
+union = []
+const_generics = []
+const_new = []
+
+[dependencies]
+arrayvec = { path = "../arrayvec", version = "0.7.8" }

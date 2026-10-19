@@ -1,0 +1,10 @@
+[package]
+name = "kinogaki-unicode"
+version = "0.1.0"
+description = "Unicode text segmentation (UAX #29 graphemes and word bounds) and combining marks, from the UCD"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

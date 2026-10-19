@@ -1,0 +1,15 @@
+[package]
+name = "libm"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga resolves to it through [patch.crates-io] (see README.md).
+version = "0.2.16+kinogaki"
+description = "Kinogaki's own float functions for naga's constant evaluator: asinh, acosh, rint"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []

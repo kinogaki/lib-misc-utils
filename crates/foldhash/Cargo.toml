@@ -1,0 +1,18 @@
+[package]
+name = "foldhash"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# hashbrown resolve(s) to it through [patch.crates-io] (see README.md).
+version = "0.2.0+kinogaki"
+description = "Kinogaki's own fast seeded hasher for hashbrown's default RandomState"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = []
+# hashbrown names this one behind its own `nightly` feature.
+nightly = []

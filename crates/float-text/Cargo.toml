@@ -1,0 +1,10 @@
+[package]
+name = "kinogaki-float-text"
+version = "0.1.0"
+description = "The shortest decimal text that reads back as the same f64 (Ryu's search), fast"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

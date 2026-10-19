@@ -1,0 +1,19 @@
+[package]
+name = "bit-set"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga and wgpu-core resolve(s) to it through [patch.crates-io] (see README.md).
+version = "0.10.0+kinogaki"
+description = "Kinogaki's own set of small integers as a bit vector, with bit-set's API"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+bit-vec = { path = "../bit-vec", version = "0.9.1", default-features = false }

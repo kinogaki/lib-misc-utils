@@ -1,0 +1,12 @@
+[package]
+name = "static_assertions"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# wgpu, wgpu-hal and wgpu-types resolve(s) to it through [patch.crates-io] (see README.md).
+version = "1.1.0+kinogaki"
+description = "Kinogaki's own compile-time assertions: assert_impl_all! and assert_not_impl_any!"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

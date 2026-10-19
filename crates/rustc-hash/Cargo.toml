@@ -1,0 +1,16 @@
+[package]
+name = "rustc-hash"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga, naga-types and wgpu-core resolve(s) to it through [patch.crates-io] (see README.md).
+version = "1.1.0+kinogaki"
+description = "Kinogaki's own FxHasher: rustc's fast non-cryptographic hash, bit for bit"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = []

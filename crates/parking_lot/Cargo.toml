@@ -1,0 +1,18 @@
+[package]
+name = "parking_lot"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# wgpu, wgpu-core and wgpu-hal resolve to it through [patch.crates-io] (see README.md).
+version = "0.12.5+kinogaki"
+description = "Kinogaki's own locks with parking_lot's API: Mutex and Condvar on std, a writer-preferring RwLock"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Not the workspace lints: the RwLock's data cell (src/rwlock/cell.rs) is the
+# crate's only unsafe code, so `unsafe_code` is denied here and allowed only there.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"

@@ -1,0 +1,17 @@
+[package]
+name = "codespan-reporting"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga resolves to it through [patch.crates-io] (see README.md).
+version = "0.13.1+kinogaki"
+description = "Kinogaki's own source diagnostics renderer: the part of codespan-reporting naga uses"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# naga's `stderr` feature asks for this one (emit_to_io_write).
+std = []

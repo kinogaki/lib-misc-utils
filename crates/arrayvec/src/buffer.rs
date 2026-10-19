@@ -1,0 +1,80 @@
+//! The inline buffer: the crate's only unsafe code.
+//!
+//! Invariant: `len <= CAP`, and exactly the slots `data[..len]` hold
+//! initialised values (owned by the buffer). Each method keeps it:
+//!
+//! - `push` writes slot `len` (uninitialised by the invariant) before raising `len`;
+//! - `pop` lowers `len` before reading slot `len` out, so the value has one owner;
+//! - `truncate` lowers `len` first, then drops the slots it gave up (a panic in
+//!   a destructor leaves the remaining tail leaked, never dropped twice);
+//! - the slice views cover exactly `data[..len]`;
+//! - `Drop` drops `data[..len]`.
+#![allow(unsafe_code)]
+
+use core::mem::MaybeUninit;
+
+pub(crate) struct Buffer<T, const CAP: usize> {
+    data: [MaybeUninit<T>; CAP],
+    len: usize,
+}
+
+impl<T, const CAP: usize> Buffer<T, CAP> {
+    pub(crate) const fn new() -> Buffer<T, CAP> {
+        Buffer {
+            data: [const { MaybeUninit::uninit() }; CAP],
+            len: 0,
+        }
+    }
+
+    #[inline]
+    pub(crate) const fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Append `value`, or give it back when full.
+    #[inline]
+    pub(crate) fn push(&mut self, value: T) -> Result<(), T> {
+        if self.len == CAP {
+            return Err(value);
+        }
+        self.data[self.len].write(value);
+        self.len += 1;
+        Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            return None;
+        }
+        self.len -= 1;
+        // SAFETY: slot `len` was initialised and is now outside `..len`, so
+        // this read takes its only owner.
+        Some(unsafe { self.data[self.len].assume_init_read() })
+    }
+
+    pub(crate) fn truncate(&mut self, len: usize) {
+        while self.len > len {
+            drop(self.pop());
+        }
+    }
+
+    #[inline]
+    pub(crate) fn as_slice(&self) -> &[T] {
+        // SAFETY: `data[..len]` is initialised; MaybeUninit<T> has T's layout.
+        unsafe { &*(core::ptr::from_ref(&self.data[..self.len]) as *const [T]) }
+    }
+
+    #[inline]
+    pub(crate) fn as_mut_slice(&mut self) -> &mut [T] {
+        // SAFETY: as in `as_slice`, borrowed mutably.
+        unsafe { &mut *(core::ptr::from_mut(&mut self.data[..self.len]) as *mut [T]) }
+    }
+}
+
+impl<T, const CAP: usize> Drop for Buffer<T, CAP> {
+    fn drop(&mut self) {
+        // SAFETY: `data[..len]` is initialised and owned; dropped once here.
+        unsafe { core::ptr::drop_in_place(self.as_mut_slice()) }
+    }
+}

@@ -1,0 +1,12 @@
+[package]
+name = "cfg-if"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga, wgpu, wgpu-hal, blake3 and libloading resolve(s) to it through [patch.crates-io] (see README.md).
+version = "1.0.5+kinogaki"
+description = "Kinogaki's own cfg_if! macro"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

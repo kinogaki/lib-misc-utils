@@ -1,0 +1,12 @@
+[package]
+name = "shlex"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# cc (blake3's build script) resolve(s) to it through [patch.crates-io] (see README.md).
+version = "2.0.1+kinogaki"
+description = "Kinogaki's own POSIX-shell-style word splitting (shlex::Shlex)"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

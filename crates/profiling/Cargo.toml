@@ -1,0 +1,15 @@
+[package]
+name = "profiling"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# wgpu, wgpu-core and wgpu-hal resolve(s) to it through [patch.crates-io] (see README.md).
+version = "1.0.18+kinogaki"
+description = "Kinogaki's own profiling macros: no profiler, so scope! expands to nothing"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []

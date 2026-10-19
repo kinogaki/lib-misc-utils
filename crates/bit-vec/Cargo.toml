@@ -1,0 +1,16 @@
+[package]
+name = "bit-vec"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# wgpu-core and bit-set resolve(s) to it through [patch.crates-io] (see README.md).
+version = "0.9.1+kinogaki"
+description = "Kinogaki's own growable bit vector with bit-vec's API"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+std = []

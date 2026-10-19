@@ -1,0 +1,20 @@
+[package]
+name = "half"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga resolves to it through [patch.crates-io] (see README.md).
+version = "2.7.1+kinogaki"
+description = "Kinogaki's own IEEE 754 binary16 (f16) type: the part of half that naga uses"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = []
+# naga asks for half's num-traits implementations.
+num-traits = ["dep:num-traits"]
+
+[dependencies]
+num-traits = { path = "../num-traits", version = "0.2.19", optional = true, default-features = false }

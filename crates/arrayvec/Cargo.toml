@@ -1,0 +1,23 @@
+[package]
+name = "arrayvec"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga, wgpu, wgpu-core, wgpu-hal and blake3 resolve to it through
+# [patch.crates-io] (see README.md).
+version = "0.7.8+kinogaki"
+description = "Kinogaki's own fixed-capacity vector and string with arrayvec's API"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+# Not the workspace lints: the inline buffer (src/buffer.rs) is the crate's only
+# unsafe code, so `unsafe_code` is denied here and allowed only there.
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+dbg_macro = "deny"
+todo = "deny"
+
+[features]
+default = ["std"]
+std = []

@@ -1,0 +1,20 @@
+[package]
+name = "num-traits"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga and half resolve to it through [patch.crates-io] (see README.md).
+version = "0.2.19+kinogaki"
+description = "Kinogaki's own numeric traits: the subset of num-traits that naga and half call"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Feature names the frozen consumers ask for. Our implementation always uses
+# std's float functions, so they enable nothing.
+std = []
+libm = []
+i128 = []

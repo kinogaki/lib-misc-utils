@@ -1,0 +1,19 @@
+[package]
+name = "once_cell"
+# Ours, not upstream: the crates.io name and a semver-compatible version so
+# naga, wgpu-core and read-fonts resolve(s) to it through [patch.crates-io] (see README.md).
+version = "1.21.4+kinogaki"
+description = "Kinogaki's own once_cell API (sync::OnceCell, sync::Lazy, race::OnceBox) on std's OnceLock and LazyLock"
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+default = ["std"]
+# Feature names the frozen consumers ask for; everything is always available.
+std = ["alloc", "race"]
+alloc = ["race"]
+race = []
