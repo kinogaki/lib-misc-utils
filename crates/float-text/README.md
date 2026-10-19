@@ -1,10 +1,14 @@
 # kinogaki-float-text
 
-The shortest decimal text that reads back as the same `f64`, laid out as
-zmij lays it out (plain decimal for exponents -5..=15, `d.ddde±N` outside).
-The digits come from Schubfach's search. tests/against_std.rs compares them
-with std's shortest digits on millions of values, and tests/tables.rs checks
-the power-of-ten table with exact big integers.
+The shortest decimal text that reads back as the same `f64`, byte for byte
+as zmij writes it: plain decimal for exponents -5..=15, `d.ddde±N` outside.
+The digits come from one 128 × 64-bit scaling by a power of ten
+(src/shortest.rs, the method zmij uses), and are written eight at a time.
 
-Not yet used: it matches zmij byte for byte but is about 2x slower per value
-in safe scalar code, so lib-obj keeps the frozen zmij until it is as fast.
+Tests:
+
+- tests/against_std.rs compares the digits with std's shortest on millions
+  of values: all exponents, powers of two and their neighbours, and short
+  decimals. They differ only at exact ties, where we round to even.
+- tests/tables.rs checks the power-of-ten table with exact big integers.
+- tests/digits.rs checks the digit routine for all of 0..10^8.

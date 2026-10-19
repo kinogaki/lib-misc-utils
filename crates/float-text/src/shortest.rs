@@ -1,123 +1,119 @@
-//! The shortest decimal that rounds back to a finite, positive f64: Raffaello
-//! Giulietti's Schubfach ("The Schubfach way to render doubles", 2020).
+//! The shortest decimal that rounds back to a finite, positive f64, with one
+//! 128 × 64-bit product (the method zmij uses, after Xiang JunBo's
+//! refinement of Schubfach).
 //!
-//! For `v = c × 2^q`, the rounding interval is `[cbl, cbr] / 4 × 2^q` around
-//! `cb / 4 × 2^q` (`cb = 4c`). One 126-bit power of ten `g` scales the three
-//! to a precision `10^k` at which the interval is narrower than 10 units:
-//! `vbl < vb < vbr` (times 4, rounded to odd, so comparisons stay exact).
-//! Then the interval holds at most one multiple of 10 (a decimal one digit
-//! shorter), and otherwise the result is `s = floor(vb / 4)` or `s + 1`,
-//! whichever is in the interval, or the closer (ties to even) when both are.
-//! Bounds count only for an even `c` (round-half-even reads them back).
+//! For `v = c × 2^e`, let `k = floor(log10 2^e)` and scale by 10^-(k+1):
+//! `v × 10^-(k+1) = integral + fraction` has 15 or 16 digits before the
+//! point (the "shorter" precision) and a 64-bit fraction. Half an ulp of `v`
+//! in the same units is under 1/2 and at least 1/20, so:
+//!
+//! - when `integral` or `integral + 1` lies inside the rounding interval
+//!   (the fraction is within half an ulp of either end), that is the result
+//!   at 10^(k+1); it is the only one there, and a still shorter decimal would
+//!   be one of these two with trailing zeros;
+//! - otherwise one more digit, `round(fraction × 10)`, gives the closest
+//!   decimal at 10^k, which the interval (at least a tenth wide) holds.
+//!
+//! The power of ten is a 128-bit significand rounded down; the product is
+//! truncated, and the small biases below cover both errors. A power of two
+//! (its interval is narrower below) takes the same steps with the lower
+//! half-width halved.
 
-use crate::tables::{G, G_MIN};
+use crate::tables::{POW10, POW10_MIN};
 
-const PRECISION: u32 = 53;
-/// The exponent of the smallest subnormal's last bit.
-const Q_MIN: i32 = -1074;
-/// The smallest normal significand, 2^52.
-const C_MIN: u64 = 1 << 52;
+/// Extra fraction bits kept below the integral part while multiplying.
+const EXTRA: u32 = 6;
 
-/// floor(q × log10(2)), exact for |q| <= 5456721.
-#[inline]
-fn flog10_pow2(q: i32) -> i32 {
-    ((q as i64 * 661_971_961_083) >> 41) as i32
+/// floor(log10 2^e) for e in -1334..=2620.
+#[inline(always)]
+const fn floor_log10_pow2(e: i32) -> i32 {
+    (e * 315_653) >> 20
 }
 
-/// floor(q × log10(3/4 × 2)), exact for |q| <= 5456721.
-#[inline]
-fn flog10_three_quarters_pow2(q: i32) -> i32 {
-    ((q as i64 * 661_971_961_083 - 274_743_187_321) >> 41) as i32
+/// floor(log10 (3/4 × 2^e)) for e in -1334..=2620.
+#[inline(always)]
+const fn floor_log10_three_quarters_pow2(e: i32) -> i32 {
+    (e * 315_653 - 131_072) >> 20
 }
 
-/// floor(e × log2(10)), exact for |e| <= 1233.
-#[inline]
-fn flog2_pow10(e: i32) -> i32 {
-    ((e as i64 * 913_124_641_741) >> 38) as i32
+/// floor(log2 10^e) for e in -293..=323 (checked against the table's
+/// exponents in tests/tables.rs).
+#[inline(always)]
+pub(crate) const fn floor_log2_pow10(e: i32) -> i32 {
+    (e * 217_707) >> 16
 }
 
-#[inline]
-fn mul_high(a: u64, b: u64) -> u64 {
-    ((a as u128 * b as u128) >> 64) as u64
+/// The high 128 bits of the 192-bit product of the 128-bit `(high, low)` and `x`.
+#[inline(always)]
+fn product((high, low): (u64, u64), x: u64) -> (u64, u64) {
+    let upper = high as u128 * x as u128;
+    let carry = ((low as u128 * x as u128) >> 64) as u64;
+    let lo = (upper as u64).wrapping_add(carry);
+    ((upper >> 64) as u64 + (lo < upper as u64) as u64, lo)
 }
 
-/// `g × cp / 2^127` rounded to odd (the low bit records an inexact result),
-/// for the 126-bit `g = g1 × 2^63 + g0`.
-#[inline]
-fn round_to_odd(g1: u64, g0: u64, cp: u64) -> u64 {
-    let x1 = mul_high(g0, cp);
-    let y0 = g1.wrapping_mul(cp);
-    let y1 = mul_high(g1, cp);
-    let z = (y0 >> 1).wrapping_add(x1);
-    let vbp = y1 + (z >> 63);
-    vbp | (((z & (u64::MAX >> 1)) + (u64::MAX >> 1)) >> 63)
+/// `(x × y + c) >> 64`.
+#[inline(always)]
+fn mul_add_high(x: u64, y: u64, c: u64) -> u64 {
+    ((x as u128 * y as u128 + c as u128) >> 64) as u64
+}
+
+/// The integral and fractional parts of `c × 2^e × 10^-(k+1)`, and half an
+/// ulp of `c × 2^e` in the fraction's units.
+#[inline(always)]
+fn scaled(c: u64, e: i32, k: i32) -> (u64, u64, u64) {
+    let exponent = -(k + 1);
+    let shift = (e + floor_log2_pow10(exponent) + 1 + EXTRA as i32) as u32;
+    let pow10 = POW10[(exponent - POW10_MIN) as usize];
+    let (high, low) = product(pow10, c << shift);
+    let integral = high >> EXTRA;
+    let fraction = (high << (64 - EXTRA)) | (low >> EXTRA);
+    (integral, fraction, pow10.0 >> (EXTRA + 1 - shift))
 }
 
 /// The decimal significand (perhaps with trailing zeros) and power of ten of
 /// the shortest decimal for the f64 with these biased exponent and mantissa
 /// fields (not zero, not infinite or NaN).
 #[inline]
-pub(crate) fn shortest(exponent_bits: u32, mantissa_bits: u64) -> (u64, i32) {
-    if exponent_bits != 0 {
-        let mq = -Q_MIN + 1 - exponent_bits as i32;
-        let c = C_MIN | mantissa_bits;
-        // An integer below 2^53 is its own shortest decimal.
-        if 0 < mq && mq < PRECISION as i32 {
-            let f = c >> mq;
-            if f << mq == c {
-                return (f, 0);
-            }
-        }
-        return to_decimal(-mq, c, 0);
+pub(crate) fn shortest(exponent_bits: u32, mantissa_bits: u64) -> (u64, u8, i32) {
+    let (c, e) = if exponent_bits == 0 {
+        (mantissa_bits, 1 - 1075)
+    } else {
+        (mantissa_bits | 1 << 52, exponent_bits as i32 - 1075)
+    };
+    if exponent_bits != 0 && mantissa_bits == 0 {
+        return power_of_two(c, e);
     }
-    match mantissa_bits {
-        // The two smallest subnormals' intervals are too wide for one scaled
-        // pass to be sure of the shortest decimal; theirs are known.
-        1 => (5, -324),
-        2 => (1, -323),
-        _ => to_decimal(Q_MIN, mantissa_bits, 0),
+    let k = floor_log10_pow2(e);
+    let (integral, fraction, half_ulp) = scaled(c, e, k);
+    // An even significand's interval includes its ends.
+    let half_ulp = half_ulp + (1 - (c & 1));
+    let round_up = fraction.wrapping_add(half_ulp) < fraction;
+    let round_down = half_ulp > fraction;
+    if round_up | round_down {
+        return (integral + round_up as u64, 0, k + 1);
     }
+    // The extra digit, rounded to nearest (ties to even: x.25 at the shorter
+    // precision is the only exact tie that rounds down).
+    let mut digit = mul_add_high(fraction, 10, (1 << 63) + 6);
+    if fraction == 1 << 62 {
+        digit = 2;
+    }
+    (integral, digit as u8 + b'0', k + 1)
 }
 
+/// [`shortest`] for a power of two: the interval below is half as wide.
+/// (Common in models: 0.5, 1, 2, -1 in normals and grids.)
 #[inline]
-fn to_decimal(q: i32, c: u64, dk: i32) -> (u64, i32) {
-    let out = c & 1;
-    let cb = c << 2;
-    let cbr = cb + 2;
-    // At a power of two the interval below is half as wide.
-    let (cbl, k) = if c != C_MIN || q == Q_MIN {
-        (cb - 2, flog10_pow2(q))
-    } else {
-        (cb - 1, flog10_three_quarters_pow2(q))
-    };
-    let h = q + flog2_pow10(-k) + 2;
-    let (g1, g0) = G[(-k - G_MIN) as usize];
-    let vb = round_to_odd(g1, g0, cb << h);
-    let vbl = round_to_odd(g1, g0, cbl << h);
-    let vbr = round_to_odd(g1, g0, cbr << h);
-    let s = vb >> 2;
-    if s >= 100 {
-        // A decimal one digit shorter: the multiples of 10 around s.
-        let sp10 = 10 * (s / 10);
-        let tp10 = sp10 + 10;
-        let upin = vbl + out <= sp10 << 2;
-        let wpin = (tp10 << 2) + out <= vbr;
-        if upin != wpin {
-            return (if upin { sp10 } else { tp10 }, k);
-        }
+fn power_of_two(c: u64, e: i32) -> (u64, u8, i32) {
+    let k = floor_log10_three_quarters_pow2(e);
+    let (integral, fraction, half_ulp) = scaled(c, e, k);
+    let round_up = half_ulp > u64::MAX - fraction;
+    let round_down = (half_ulp >> 1) > fraction;
+    if round_up | round_down {
+        return (integral + round_up as u64, 0, k + 1);
     }
-    let t = s + 1;
-    let uin = vbl + out <= s << 2;
-    let win = (t << 2) + out <= vbr;
-    if uin != win {
-        return (if uin { s } else { t }, k + dk);
-    }
-    // Both in the interval: the closer, ties to even.
-    let mid = (s + t) << 1;
-    let pick = if vb < mid || (vb == mid && s & 1 == 0) {
-        s
-    } else {
-        t
-    };
-    (pick, k + dk)
+    let nearest = mul_add_high(fraction, 10, (1 << 63) - 1);
+    let lowest = mul_add_high(fraction.wrapping_sub(half_ulp >> 1), 10, !0);
+    (integral, nearest.max(lowest) as u8 + b'0', k + 1)
 }

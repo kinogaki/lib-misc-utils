@@ -62,32 +62,45 @@ fn pow(base: u64, n: u32) -> Big {
     (0..n).fold(Big::from(1), |acc, _| acc.mul_small(base))
 }
 
-/// For every e: with r = floor(e log2 10) - 125 and g = G[e + 292],
-/// (g - 1) × 2^r <= 10^e < g × 2^r, scaled to integers.
+/// For every e: POW10[e + 293] = floor(10^e × 2^(127 - b)) with
+/// b = floor(log2 10^e), i.e. 2^127 <= t, and t × 2^b <= 10^e × 2^127 < (t + 1) × 2^b
+/// (scaled to integers), and b is what the search computes.
 #[test]
-fn g_is_the_rounded_up_scaled_power_of_ten() {
-    for (i, &(high, low)) in tables::G.iter().enumerate() {
-        let e = tables::G_MIN + i as i32;
-        let r = ((e as i64 * 913_124_641_741) >> 38) as i32 - 125;
-        let g = Big::from((high as u128) << 63 | low as u128);
-        let g_minus_1 = Big::from(((high as u128) << 63 | low as u128) - 1);
-        // Both sides times 2^max(-r,0) × 10^max(-e,0).
-        let left_scale = pow(2, r.max(0) as u32).mul(&pow(10, (-e).max(0) as u32));
-        let right = pow(10, e.max(0) as u32).mul(&pow(2, (-r).max(0) as u32));
+fn pow10_is_the_truncated_128_bit_significand() {
+    for (i, &(high, low)) in tables::POW10.iter().enumerate() {
+        let e = tables::POW10_MIN + i as i32;
+        let b = (e * 217_707) >> 16; // the search's floor_log2_pow10
+        let t = Big::from((high as u128) << 64 | low as u128);
+        let t1 = Big::from(((high as u128) << 64 | low as u128) + 1);
+        assert_eq!(t.bits(), 128, "POW10[{i}] is not normalised (e = {e})");
+        // Compare t × 2^b with 10^e × 2^127, both sides moved to integers.
+        let ten = pow(10, e.unsigned_abs());
+        let (left, right_base) = if e >= 0 {
+            (Big::from(1), ten)
+        } else {
+            (ten, Big::from(1))
+        };
+        let scale_left = |x: &Big| {
+            if b >= 0 {
+                x.mul(&left).mul(&Big::pow2(b as u32))
+            } else {
+                x.mul(&left)
+            }
+        };
+        let right = if b >= 0 {
+            right_base.mul(&Big::pow2(127))
+        } else {
+            right_base.mul(&Big::pow2((127 - b) as u32))
+        };
         assert_ne!(
-            g_minus_1.mul(&left_scale).cmp(&right),
+            scale_left(&t).cmp(&right),
             std::cmp::Ordering::Greater,
-            "G[{i}] too large (e = {e})"
+            "POW10[{i}] too large (e = {e})"
         );
         assert_eq!(
-            right.cmp(&g.mul(&left_scale)),
+            right.cmp(&scale_left(&t1)),
             std::cmp::Ordering::Less,
-            "G[{i}] too small (e = {e})"
-        );
-        assert!(
-            g.bits() == 126 || g == Big::pow2(126),
-            "G[{i}] has {} bits",
-            g.bits()
+            "POW10[{i}] too small (e = {e})"
         );
     }
 }
