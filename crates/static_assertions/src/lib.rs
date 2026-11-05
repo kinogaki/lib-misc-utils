@@ -29,9 +29,9 @@ macro_rules! assert_not_impl_any {
             }
             impl<T: ?Sized> AmbiguousIfImpl<()> for T {}
             $({
-                #[allow(dead_code)]
                 struct Implemented;
                 impl<T: ?Sized + $trait> AmbiguousIfImpl<Implemented> for T {}
+                let _ = Implemented;
             })+
             let _ = <$type as AmbiguousIfImpl<_>>::item;
         };
