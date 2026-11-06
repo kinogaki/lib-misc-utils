@@ -1,7 +1,7 @@
 //! Sixteen ASCII digits at a time: two numbers below 10^8 to two
 //! little-endian words of eight digits, in `u64` arithmetic. (A NEON
 //! version measured no faster where the text is copied into a buffer, as
-//! lib-obj does, so there is none.)
+//! the OBJ plugin does, so there is none.)
 
 /// The digits of `high` and `low` (each below 10^8), eight per word.
 #[inline]
