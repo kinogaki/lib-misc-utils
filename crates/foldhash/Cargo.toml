@@ -5,6 +5,7 @@ name = "foldhash"
 version = "0.2.0+kinogaki"
 description = "Kinogaki's own fast seeded hasher for hashbrown's default RandomState"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

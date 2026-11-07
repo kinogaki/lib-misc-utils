@@ -3,6 +3,7 @@ name = "kinogaki-bytes"
 version = "0.1.0"
 description = "Fast byte search in safe code: find, find last and count one byte value"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

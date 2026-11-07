@@ -5,6 +5,7 @@ name = "profiling"
 version = "1.0.18+kinogaki"
 description = "Kinogaki's own profiling macros: no profiler, so scope! expands to nothing"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

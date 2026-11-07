@@ -28,3 +28,7 @@ Rules: unsafe is forbidden, except the documented cores of arrayvec
 (src/buffer.rs) and parking_lot (src/rwlock/cell.rs). No dependencies outside
 this repository. Studio checks the repository with `tools/check_all.py`, and
 `tools/check_architecture.py` enforces the rules above.
+
+## Licence
+
+MIT OR Apache-2.0, at your option: see LICENSE-MIT and LICENSE-APACHE.

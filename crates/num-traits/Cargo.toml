@@ -5,6 +5,7 @@ name = "num-traits"
 version = "0.2.19+kinogaki"
 description = "Kinogaki's own numeric traits: the subset of num-traits that naga and half call"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

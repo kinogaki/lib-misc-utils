@@ -5,6 +5,7 @@ name = "libm"
 version = "0.2.16+kinogaki"
 description = "Kinogaki's own float functions for naga's constant evaluator: asinh, acosh, rint"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

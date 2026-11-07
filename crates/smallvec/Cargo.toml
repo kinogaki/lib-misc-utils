@@ -6,6 +6,7 @@ name = "smallvec"
 version = "1.16.3+kinogaki"
 description = "Kinogaki's own small vector (inline until it spills to the heap) with smallvec's API"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

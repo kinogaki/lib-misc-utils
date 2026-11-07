@@ -5,6 +5,7 @@ name = "half"
 version = "2.7.1+kinogaki"
 description = "Kinogaki's own IEEE 754 binary16 (f16) type: the part of half that naga uses"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

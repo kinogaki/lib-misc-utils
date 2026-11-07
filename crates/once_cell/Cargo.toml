@@ -5,6 +5,7 @@ name = "once_cell"
 version = "1.21.4+kinogaki"
 description = "Kinogaki's own once_cell API (sync::OnceCell, sync::Lazy, race::OnceBox) on std's OnceLock and LazyLock"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

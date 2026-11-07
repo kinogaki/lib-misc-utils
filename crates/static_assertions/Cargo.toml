@@ -5,6 +5,7 @@ name = "static_assertions"
 version = "1.1.0+kinogaki"
 description = "Kinogaki's own compile-time assertions: assert_impl_all! and assert_not_impl_any!"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

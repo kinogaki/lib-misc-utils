@@ -5,6 +5,7 @@ name = "document-features"
 version = "0.2.12+kinogaki"
 description = "Kinogaki's own document_features! macro: an empty feature list (it only feeds rustdoc)"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 

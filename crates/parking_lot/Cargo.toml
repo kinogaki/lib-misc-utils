@@ -5,6 +5,7 @@ name = "parking_lot"
 version = "0.12.5+kinogaki"
 description = "Kinogaki's own locks with parking_lot's API: Mutex and Condvar on std, a writer-preferring RwLock"
 edition.workspace = true
+license.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
